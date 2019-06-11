@@ -34,6 +34,13 @@ boxplot(avaliacoes_maisculas, avaliacoes_minusculas, ylab="Insatisfação", names 
 ordered <- avaliacoes[order(str_count(avaliacoes$texto)),]
 plot(str_count(ordered$texto), ordered$insatisfacao)
 
+reg2 <- lm(count_h ~ avaliacoes$insatisfacao)
+anova(reg2)
+summary(reg2)
+
 reg <- lm(str_count(ordered$texto) ~ ordered$insatisfacao)
 anova(reg)
 summary(reg)
+
+
+
