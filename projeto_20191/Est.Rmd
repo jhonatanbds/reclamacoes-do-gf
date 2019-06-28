@@ -1,0 +1,295 @@
+---
+title: "Metodologia Cientifica"
+author: "Jhonatan Batista, Hebert, Ronnyldo e Wesley Roseno Saraiva"
+date: "11 de junho de 2019"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+bibliography: bib.bib
+---
+
+<style>
+body {
+text-align: justify}
+</style>
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+Sys.setlocale(category="LC_ALL", locale = "English_United States.1252");
+library(knitr);
+library("ggplot2")
+library("reshape2")
+library("ggpubr")
+library("car")
+library("plot3D")
+library("plm")
+
+dados = read.csv('data.csv',sep = ",", encoding = 'UTF-8', stringsAsFactors = FALSE);
+
+dados$Grupo.que.vai.avaliar=NULL
+dados$avaliadores=NULL
+dados$range.avaliacoes=NULL
+dados$range.range.avaliacoes=NULL
+dados$robo=NULL
+
+insatisfacao = dados$insatisfacao
+robo = dados$Sentimento.Biblioteca
+qtdCaracteres = dados$qtdCaracteres
+
+set.seed(2002)
+
+
+summary(dados);
+
+```
+
+
+
+
+
+### Apresentação do problema
+Existem sites dedicados a fazerem registros de reclamações de cliente em relação ao serviço oferecido por empresas, autarquias, ou por agências do próprio governo federal. Portanto, existe uma necessidade estabelecida pelo mercado, de se fazerem análises para se ter uma melhor classificação dos registros de insatisfação dos clientes e consumidores dos serviços. Desta forma, é de interesse do governo federal e de empresas, desenvolver métodos automatizados para análise de insatisfação presente nas reclamações devido ao grande número de reclamações. Estas análises podem ser úteis para otimizar a qualidade dos serviços de reclamações responsáveis por ouvir a população, bem como definir prioridades para empresas e governo nas áreas de atuação das correções dos problemas reportados pelos clientes.
+
+Este trabalho se propõe a fazer uma análise entre o texto relativo a insatisfação do cliente, a nota de insatisfação do cliente e uma nota dada pela análise feita por dois algoritmos de análise de sentimentos. Os algoritmos utilizados para  fazer a avaliação léxica são da biblioteca lexiconpt [@lexiconpt]. 
+
+A biblioteca pode ser utilizada em R e ela tem a função de fazer uma análise léxica de textos escritos em português, fazendo uma análise geral com o intuito de pontuar o texto em sua totalidade. A biblioteca então analisa palavra por palavra, pontuando o texto positivamente se houver incidência de palavras com conotação positiva (E.G. Obrigado, Feliz, Bom, Dia, etc) e pontua negativamente se houvr incidência de palavras com conotação negativa (E.G. Raiva, palavrões, etc). No fim ela faz um somatório do texto e retorna um valor sentimental do texto que pode variar de infinito negativo até infinito positivo.
+
+Desta forma, nossa variável resposta seria o grau de insatisfação e as variáves explicativas seriam a quantidade de caracteres e as notas dada pela biblioteca lexiconpt.
+
+
+###LexiconPt
+LexiconPt é uma biblioteca de R que traz um ferramentário para fazer análise léxica de textos em português. Ela foi feita para facilitar o trabalho de analistas na facilitação da mineração textual. Ela é capaz de fazer análise léxica de palavras trazendo o sentimento dela.[@sillasgonzaga_2018,@lexiconPt2,@lexiconDiscuss].
+
+A ideia de mineração de opinião baseada em léxicos de palavras é saber que existem palavras com polaridade positivas (e.g. bom ou bem) e palavras que são indesejadas com polaridade negativa (e.g. ruim ou terrível). Apesar de polaridade de opinião ser aplicadas a adjetivos e advérbios, existem vebos e pronomes que possuem opinião, também.
+
+Existem duas classes de léxicos (positivo/negativo) que se subclassificam em 5 outras classes:
+
+The lexicon contains two classes (positive/negative) and 10 specific lists.
+
+Tipos positivos:
+
+(1)  Substantivo positivo
+
+(2)  Adjetivo Positivo
+
+(3)  Advérbio Positivo
+
+(4)  Verbo Positivo
+
+(5)  Frase positiva
+
+
+Tipos negativos:
+
+(1)  Substantivo negativo
+
+(2)  Adjetivo negativo
+
+(3)  Advérbio negativo
+
+(4)  Verbo negativo
+
+(5)  Frase negativo
+
+
+Exemplo de uso da Biblioteca:
+```{r}
+library("lexiconPT")
+get_word_sentiment("gentileza")[3]
+get_word_sentiment("mau")[3]
+
+```
+
+
+### Descrição da Base de Dados
+A base de dados foi extraída das reclamações recebidas pela ANS (Agência Nacional de Saúde Suplementar) e pela ANATEL (Agência Nacional de Telecomunicações). Onde após o recolhimento das reclamações, foi feito uma avaliação por humanos, da insatisfação presente em cada reclamação, dividida em 5 níveis de 1 a 5. Sendo 5 insatisfação total, 4 insatisfação bastante alta, 3 insatisfação média, 2 insatisfação baixa e 1 insatisfação mínima com o serviço. Com um total de 60 reclamações. 
+
+Foi gerado um CSV contendo id,orgao,data,titulo,texto,link,Grupo que vai avaliar,insatisfacao	avaliadores,range.avaliacoes,Numero de caracteres, Sentimento da Biblioteca. Como existe muita informação, foi feita uma versão resumida, com apenas um exemplo, para melhor entendimento dos dados que estão sendo trabalhados.
+
+```{r echo = FALSE}
+kable(dados[2,]);
+```
+
+
+Tendo essa base para análise, foi estudada a viabilidade de automatização da avaliação do nível de insatisfação, através da análise de duas variáveis. A primeira variável sendo a quantidade de caracteres presentes na reclamação, onde se parte do pressuposto de haver uma correlação do tamanho da reclamação com o quanto de insatisfação presente na mesma. E a segunda sendo uma análise léxica através de uma biblioteca especializada disponíveis para a linguagem R, onde se tem o nível de polaridade do sentimento presente no texto.
+
+A ideia é fazer um simples estudo relacionando tais variáveis. Será que a quantidade de texto escrita pelo cliente pode ser um indicador da insatisfação dada por ele nos sites de reclamações? Ou seja, o esforço para escrever o texto de reclamação existe alguma relação com a insatisfação do cliente? E com a análise léxica feita pela biblioteca, será que existe alguma relação?
+
+
+### Histograma
+Histogramas possuem a capacidade de trazer uma visualização da distribuição de frequências de uma certa característica das observações. A base representa a classe dos dados, enquanto a altura representa a frequência observada daquela determinada classe. Ele pode servir para melhor entender a distribuição dos nossos dados, indicando se a distribuição dos dados é normal ou não, por exemplo, bem como indicar a possibilidade de haver misturas de populações[@frost_2019]. Nos nossos estudos desenvolvemos histograma das nossas três variáveis. 
+
+```{r}
+hist(insatisfacao,
+	main="Histograma do grau de insatisfação",
+	xlab="Grau de Insatisfação",
+	ylab="Quantidade",
+	xlim=c(1,5),
+	col="gray",
+	freq=TRUE
+);
+```
+
+Como podemos ver acima, grande parte do grau de insatisfação se encontra distorcido a direita e  possui mais de um pico, o que pode indicar que a distribuição do grau de insatisfação dos clientes não é normal.
+Da mesma forma temos os histograma da quantidade de caracteres. Que também estão distorcido à direita dando indícios que não possuem uma distribuição normal.
+
+```{r}
+hist(qtdCaracteres,
+	main="Histograma da quantidade de Caracteres",
+	xlab="Quantidade de Caracteres",
+	ylab="Quantidade",
+	col="gray",
+	freq=TRUE
+);
+
+hist(robo,
+	main="Histograma oplexicon_v3.0",
+	xlab="Sentimento da biblioteca",
+	ylab="Quantidade",
+	col="gray",
+	freq=TRUE
+);
+
+```
+
+Foram desenvolvidos, também histogramas tridimensionais para melhor entendimento da distribuição das classes se relacionando entre si. A lógica é a mesma: A base e a largura representam as classes e a altura representa a frequencia de ocorrencia das classes combinadas.
+
+```{r}
+##  Calculate joint counts at cut levels:
+z <- table(cut(robo, 20), cut(insatisfacao, 9))
+hist3D(z=z, border="black", zlab="Z = Frequencia", ylab="Y = Insatisfação",xlab="X = oplexicon_v3.0")
+```
+
+Acima é possível ver a distribuição das classes. O gráfico é um pouco mais difícil de entender, pois estamos usando duas classes simultaneamente para demonstrar a frequencia de ocorrência, mas cada prédio representa uma combinação de classes do grau de insatisfação do cliente e do sentimento da biblioteca utilizada simultaneamente. De tal forma que quanto mais a classe se distancia da origem do eixo X maior é o sentimento da biblioteca; e quanto mais a classe se distancia da origem do eixo y maior é o grau de insatisfação registrado.
+
+Da mesma forma, o Histograma não representa uma distribuição normal. Foi construido também um exemplo de histograma tridimensional de distribuição normal que pode ser visto a seguir:
+
+```{r}
+hist3D(z=table(cut(rnorm(1000), 20), cut(rnorm(1000), 9)), border="black")
+```
+
+
+
+Segue, também, o histograma da quantidade de caracteres e graus de insatisfação:
+```{r}
+z <- table(cut(qtdCaracteres, 20), cut(insatisfacao, 9))
+hist3D(z=z, border="black", ylab="Y = Insatisfação",xlab="X = Quantidade de Caracteres")
+
+```
+
+###Regressão linear simples entre as variáveis
+A princípio utilizamos a correlação de pearson para fazer os cálculos de nossas correlações, contudo, o resultado da correlação foi muito baixa por conta da dispersão dos nossos dados. Eles estão muito dispersos como é possível ver no gráfico a seguir.
+
+
+```{r echo = FALSE}
+ggplot(dados, aes(x=qtdCaracteres, y=insatisfacao)) +
+  geom_point(size=2)
+
+```
+
+Utilizando os códigos a seguir fizemos as correlações entre as variáveis para tentar verificar a existência de uma correlação entre elas, contudo todas elas retornaram valores abaixo de 0.3, indicando que existe uma correlação muito baixa entre todas as variáveis.
+
+```{r}
+cor(insatisfacao,qtdCaracteres, method = "spearman")
+```
+No caso  do relacionamento da quantidade de caracteres com o grau de insatisfação, existe uma baixa correlação positiva (quando a insatisfação cresce, a quantidade de caracteres também cresce).
+
+```{r}
+cor(insatisfacao,robo, method = "spearman")
+```
+
+No caso  do relacionamento da quantidade de caracteres com o sentimento do robô, existe uma baixa correlação negativa (quando a insatisfação cresce, o grau de sentimento do robô sobre aquele texto decresce, o que faz sentido uma vez que a biblioteca analisa o sentimento que o robô teve ao fazer a análise léxica).
+
+```{r}
+cor(robo,qtdCaracteres, method = "spearman")
+```
+
+No caso  do relacionamento da quantidade de caracteres com o grau de insatisfação, existe uma baixa correlação positiva.
+
+### Analisando os dados por Análise de Regressão Múltipla
+
+```{r}
+regMult <- lm(insatisfacao ~ robo + qtdCaracteres, data=dados);
+kable(confint(regMult))
+```
+
+Segundo a  apostila da disciplina e consultas externas de livros, podemos utilizar com sucesso o método da soma dos  mínimos quadrados para fazer uma análise de correlação linear, de forma que buscamos representar os dados por meio de uma reta,  levando em consideração uma probabilidade de erro. No caso desta análise de regressão  múltipla, nossos dados se comportaram da forma:
+
+$$X = \beta 0 + \beta 1X1 + \beta 2X2$$
+Onde X é a insatisfação registrada pelo humano, X1 é o sentimento registrado pela biblioteca e x2 é a quantidade de caracteres da reclamação, trocando as variáveis, temos:
+$$X = 1.90 + -0.18 1X1 + 0.00X2$$
+O que pode-se extrair da função dada acima é que o ponto de interceptação da reta de insatisfação no modelo é 1.90e as variáveis X1 e X2 possuem $\beta$ muito baixo. Neste caso X1 é uma variável que explica pouco a variável X e X2 é uma variável que não explica X1.
+
+Esta baixa correlação é confirmada pelos gráficos de dispersão construídos na fase de regressão linear simples das variáveis.
+
+```{r}
+ggplot(dados, aes(x=qtdCaracteres, y=insatisfacao)) +
+  geom_point(size=2)+
+  geom_smooth(method=lm,se=FALSE)
+
+ggplot(dados, aes(x=robo, xlab="oplexicon_v3.0", y=insatisfacao)) +
+  geom_point(size=2)+
+  geom_smooth(method=lm,se=FALSE)
+```
+
+Sendo assim, para buscarmos investigar essa hipótese de existir ou não uma correlação linear entre eles, dadas as especulações acima, justifica-se o uso do modelo de mínimos quadrados (MMQ). 
+
+### Verificando a adequação do modelo
+Para verificar a adequação do modelo aos dados  ou seja, o quão bem, esse modelo representa nossos dados,  depende-se de uma medida chamada  medida de adequação, ou coeficiente de  determinação / explicação chamado $R^{2}$ , onde é $R$ é nosso coeficiente de correlação  linear amostral.  Trata-se de uma definição abordada na regressão simples, mas que pode ser expandida à análise de regressão múltipla. Foi calculado  por meio do software proposto pelo professor, a nossa tabela  anova, onde temos acesso a estatísticas que podem nos auxiliar no cálculo dessa medida.
+
+```{r}
+kable(anova(regMult))
+
+summary(regMult);
+
+```
+
+Sabendo que nossa Medida $R^{2}$ é a estatística que indica o quanto o modelo explica o comportamento variável resposta. $R^{2}$ pode ser calculada utilizando:
+```{r}
+m <- plm(insatisfacao ~ robo + qtdCaracteres, data=dados, model = "pooling")
+val.rr<- r.squared(m)
+val.r <- sqrt(val.rr)
+val.rr
+
+```
+$$R^{2}  =  (SQReg / SQTotal)$$
+$$R^{2}  =  `r val.rr`$$
+
+
+E sendo assim chegamos a estatística $R  =  `r val.r`$
+Nesse sentido podemos afirmar por meio das estatísticas observadas que apenas cerca de  $12,64$% da variação total de $X$, pode ser explicada pela reta de regressão proposta. Utilizando também a estatística de correlação linear, temos que como ela está muito baixa, há indícios de não existência de correlação entre as variáveis e o fator $X$. Chegando a essa ideia, podemos concluir que nosso modelo talvez estivesse mais bem adequado com a adição de novas variáveis, ou que realmente não haja  formas de correlação linear entre os pontos analisados, diversos pontos podem ser apontados, para chegarmos a esse resultado.
+
+Além disso estatística F é $4.127$ e o p-valor é $0.02$ que é baixo o suficiente para rejeitar a hipótese nula de que $\beta0 = \beta1 = \beta2 = 0$. Corroborando mais uma vez a entender que o nosso modelo não é adequado para tentar explicar a variável de insatisfação.
+
+###Análise de Resíduos
+```{r}
+layout(matrix(c(1,2,3,4),2,2))
+plot(regMult)
+
+res<- resid(regMult)
+tn <- shapiro.test(res)
+tn
+
+```
+
+Verificando o modelo, os resíduos desse modelo nos mostra que pelo teste de normalidade de shapiro, foi obtido o resultado de 0.97727 com p-valor de 0.3242 que é maior que 0.05. Ou seja, não houve violação da normalidade dos resíduos. Portanto os erros possuem distribuição normal.
+
+```{r}
+ncvTest(regMult)
+```
+
+A estatística do Chi quadrado 1.270956, e o p-valor = 0.25 > 0.05 indicam que não há uma violação da homogeneidade dos resíduos.
+
+
+Portanto, apesar dos resíduos indicarem um modelo com homogeneidade de resíduos e o teste de normalidade indicarem que os erros possuem uma distribuição normal, temos que o modelo não é tão bem representativo. As variáveis explicativas não explicam bem a variável resposta e um estudo complementar mais avançado é interessante de se fazer. Neste caso, seria o estudo se utilizando de modelos lineares generalizados com o intuito de fundamentar um modelo com os componentes aleatório, sistemático e de ligação para fazer um modelo mais completo e representativo dos dados. [@cordeiro2008modelos, seção 2.3]
+```{r}
+library("scales")
+library("MLmetrics")
+robo <- head(robo, -10)
+rescale(robo,to = c(1,5))
+gt = head(dados$insatisfacao, -10)
+MSE(robo, gt)
+```
+
